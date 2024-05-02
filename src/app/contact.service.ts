@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { CookieService } from 'ngx-cookie-service';
 
 interface Contact {
@@ -18,8 +18,13 @@ export class ContactService {
 
   constructor(private http: HttpClient, private cookieService: CookieService) {}
 
-  getContacts(): Contact[] {
-    return this.getContactsFromCookie();
+  getContacts(): Observable<Contact[]> {
+    const contactsCookie = this.cookieService.get('contacts');
+    if (contactsCookie) {
+      return of(JSON.parse(contactsCookie));
+    } else {
+      return this.http.get<Contact[]>(this.contactsUrl);
+    }
   }
 
   addContact(contacts: Contact[]): void {
@@ -28,19 +33,7 @@ export class ContactService {
     this.saveContactsToCookie(existingContacts);
   }
 
-  getContactsFromCookie(): Contact[] {
-    const contactsCookie = this.cookieService.get('contacts');
-    if (contactsCookie) {
-      return JSON.parse(contactsCookie);
-    } else {
-      this.http.get<Contact[]>(this.contactsUrl).subscribe((contacts) => {
-        this.saveContactsToCookie(contacts);
-      });
-      return JSON.parse(this.cookieService.get('contacts'));
-    }
-  }
-
-  saveContactsToCookie(contacts: Contact[]) {
+  private saveContactsToCookie(contacts: Contact[]) {
     const serializedContacts = JSON.stringify(contacts);
     const expiresInDays = 30;
 
